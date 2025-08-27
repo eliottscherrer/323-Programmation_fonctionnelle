@@ -20,77 +20,69 @@ namespace PlaceDuMarche
         {
             Console.WriteLine($"Il y a {CountProductSellers("Pêches")} vendeurs de pêches.");
 
-            string[] bestWatermelonSellerInfos = GetBiggestSellerInfoFromProduct("Pastèques");
-            Console.WriteLine($"C'est {bestWatermelonSellerInfos[0]} qui a le plus de pastèques (stand {bestWatermelonSellerInfos[1]}, {bestWatermelonSellerInfos[2]} pièces)");
+            SellerInfo bestWatermelonSeller = GetBiggestSellerInfoFromProduct("Pastèques");
+            Console.WriteLine($"C'est {bestWatermelonSeller.Seller} qui a le plus de pastèques (stand {bestWatermelonSeller.StandId}, {bestWatermelonSeller.Quantity} pièces)");
 
             Console.ReadLine();
         }
 
         static int CountProductSellers(string productName)
         {
-            int count = 0;
-
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
                 IWorkbook workbook = new XSSFWorkbook(fileStream);
-
                 ISheet sheet = workbook.GetSheet("Produits");
 
-                for (int rowIndex = 0; rowIndex <= sheet.LastRowNum; rowIndex++)
-                {
-                    IRow row = sheet.GetRow(rowIndex);
-                    if (row != null)
+                IEnumerable<ProductInfo> products = Enumerable.Range(0, sheet.LastRowNum + 1)
+                    .Select(i => sheet.GetRow(i))
+                    .Where(row => row != null)
+                    .Select(row => new ProductInfo
                     {
-                        ICell cell = row.GetCell(2);
-                        if (cell != null && cell.ToString() == productName)
-                        {
-                            count++;
-                        }
-                    }
-                }
-            }
+                        StandId = row.GetCell(0)?.NumericCellValue is double sid ? (int)sid : 0,
+                        Seller = row.GetCell(1)?.ToString() ?? string.Empty,
+                        Name = row.GetCell(2)?.ToString() ?? string.Empty,
+                        Quantity = row.GetCell(3)?.NumericCellValue is double q ? (int)q : 0
+                    });
 
-            return count;
+                return products.Count(p => p.Name == productName);
+            }
         }
 
-        static string[] GetBiggestSellerInfoFromProduct(string productName)
+        static SellerInfo GetBiggestSellerInfoFromProduct(string productName)
         {
-            int maxQuantity = 0;
-            string bestSeller = "";
-            int standId = 0;
-
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
                 IWorkbook workbook = new XSSFWorkbook(fileStream);
-
                 ISheet sheet = workbook.GetSheet("Produits");
 
-                for (int rowIndex = 0; rowIndex <= sheet.LastRowNum; rowIndex++)
-                {
-                    IRow row = sheet.GetRow(rowIndex);
-                    if (row != null)
+                IEnumerable<ProductInfo> products = Enumerable.Range(0, sheet.LastRowNum + 1)
+                    .Select(i => sheet.GetRow(i))
+                    .Where(row => row != null)
+                    .Select(row => new ProductInfo
                     {
-                        ICell name = row.GetCell(2);
-                        ICell quantity = row.GetCell(3);
-                        if (name != null && name.ToString() == productName)
-                        {
-                            if (quantity != null && (int)quantity.NumericCellValue > maxQuantity)
-                            {
-                                bestSeller = row.GetCell(1).StringCellValue;
-                                standId = (int)row.GetCell(0).NumericCellValue;
-                                maxQuantity = (int)quantity.NumericCellValue;
-                            }
-                        }
-                    }
-                }
-            }
+                        StandId = row.GetCell(0)?.NumericCellValue is double sid ? (int)sid : 0,
+                        Seller = row.GetCell(1)?.ToString() ?? string.Empty,
+                        Name = row.GetCell(2)?.ToString() ?? string.Empty,
+                        Quantity = row.GetCell(3)?.NumericCellValue is double q ? (int)q : 0
+                    });
 
-            return new string[]
-            {
-                bestSeller,
-                standId.ToString(),
-                maxQuantity.ToString(),
-            };
+                var best = products
+                    .Where(p => p.Name == productName)
+                    .OrderByDescending(p => p.Quantity)
+                    .FirstOrDefault();
+
+                if (string.IsNullOrEmpty(best.Seller))
+                {
+                    return new SellerInfo { Seller = "", StandId = 0, Quantity = 0 };
+                }
+
+                return new SellerInfo
+                {
+                    Seller = best.Seller,
+                    StandId = best.StandId,
+                    Quantity = best.Quantity
+                };
+            }
         }
 
         static void PrintSheet(string sheetName)
