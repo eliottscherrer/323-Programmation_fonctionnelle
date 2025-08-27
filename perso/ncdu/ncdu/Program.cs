@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ncdu
 {
@@ -15,61 +16,48 @@ namespace ncdu
 
             List<Entry> entries = GetEntries(root);
 
-            long totalSize = 0;
-            foreach (Entry entry in entries)
-            {
-                totalSize += entry.Size;
-            }
+            List<Entry> sortedEntries = entries.OrderByDescending(e => e.Size).ToList();
+
+            long totalSize = sortedEntries.Sum(entry => entry.Size);
 
             Console.WriteLine($"--- {FormatSize(totalSize)} --- {root.FullName} ------------------------------");
             Console.WriteLine();
 
-            entries.Sort((Entry a, Entry b) => b.Size.CompareTo(a.Size));
-
-            foreach (Entry entry in entries)
-            {
+            sortedEntries.ForEach(entry => {
                 double percentage = (double)entry.Size / totalSize;
                 int barLength = (int)(percentage * MAX_HASHTAGS);
                 string bar = new string('#', barLength);
                 Console.WriteLine($"\t{FormatSize(entry.Size), 10} [{bar, -10}] {entry.Name}");
-            }
+            });
 
             Console.ReadLine();
         }
 
         public static List<Entry> GetEntries(DirectoryInfo dir)
         {
-            List<Entry> list = new List<Entry>();
-
-            // Files in directory
             FileInfo[] files = new FileInfo[] { };
             try { files = dir.GetFiles(); } catch { }
 
-            foreach (FileInfo fi in files)
-            {
-                list.Add(new Entry
-                {
-                    Name = fi.Name,
-                    Size = fi.Length
-                });
-            }
-
-            // Sub directories
             DirectoryInfo[] subDirs = new DirectoryInfo[] { };
             try { subDirs = dir.GetDirectories(); } catch { }
 
-            foreach (DirectoryInfo di in subDirs)
+            IEnumerable<Entry> fileEntries = files.Select(fi => new Entry
             {
+                Name = fi.Name,
+                Size = fi.Length
+            });
+
+            IEnumerable<Entry> dirEntries = subDirs.Select(di => {
                 long size = 0;
                 try { size = GetDirectorySize(di); } catch { }
-                list.Add(new Entry
+                return new Entry
                 {
                     Name = di.Name + Path.DirectorySeparatorChar,
                     Size = size
-                });
-            }
+                };
+            });
 
-            return list;
+            return fileEntries.Concat(dirEntries).ToList();
         }
 
         public static long GetDirectorySize(DirectoryInfo dir)
