@@ -18,9 +18,36 @@ namespace PlaceDuMarche
 
         static void Main()
         {
-            PrintSheet("Produits");
+            Console.WriteLine($"Il y a {CountProductSellers("Pêches")} vendeurs de pêches.");
 
             Console.ReadLine();
+        }
+
+        static int CountProductSellers(string productName)
+        {
+            int count = 0;
+
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                IWorkbook workbook = new XSSFWorkbook(fileStream);
+
+                ISheet sheet = workbook.GetSheet("Produits");
+
+                for (int rowIndex = 0; rowIndex <= sheet.LastRowNum; rowIndex++)
+                {
+                    IRow row = sheet.GetRow(rowIndex);
+                    if (row != null)
+                    {
+                        ICell cell = row.GetCell(2);
+                        if (cell != null && cell.ToString() == productName)
+                        {
+                            count++;
+                        }
+                    }
+                }
+            }
+
+            return count;
         }
 
         static void PrintSheet(string sheetName)
