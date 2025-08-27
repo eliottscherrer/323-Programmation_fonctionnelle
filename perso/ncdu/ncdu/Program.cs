@@ -52,7 +52,7 @@ namespace ncdu
                 try { size = GetDirectorySize(di); } catch { }
                 return new Entry
                 {
-                    Name = di.Name + Path.DirectorySeparatorChar,
+                    Name = Path.DirectorySeparatorChar + di.Name,
                     Size = size
                 };
             });
