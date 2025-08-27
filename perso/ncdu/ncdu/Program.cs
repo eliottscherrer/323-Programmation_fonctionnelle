@@ -2,6 +2,9 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Text;
 
 namespace ncdu
 {
@@ -11,10 +14,16 @@ namespace ncdu
 
         static void Main()
         {
-            string rootPath = @"C:\Users\pg13qnw\Documents\GitHub\323-Programmation_fonctionnelle";
+            Console.CursorVisible = false;
+
+            string rootPath = @"C:\Users\";
             DirectoryInfo root = new DirectoryInfo(rootPath);
 
-            List<Entry> entries = GetEntries(root);
+            var entriesTask = Task.Run(() => GetEntries(root));
+
+            ShowLoadingWhile(entriesTask);
+
+            List<Entry> entries = entriesTask.Result;
 
             List<Entry> sortedEntries = entries.OrderByDescending(e => e.Size).ToList();
 
@@ -31,6 +40,57 @@ namespace ncdu
             });
 
             Console.ReadLine();
+        }
+
+        private static void ShowLoadingWhile(Task task)
+        {
+            try
+            {
+                int boxWidth = Math.Max(30, Math.Min(60, Console.WindowWidth - 4));
+                int centerX = Math.Max(0, (Console.WindowWidth - boxWidth) / 2);
+                int centerY = Math.Max(0, Console.WindowHeight / 2);
+
+                string[] spinner = new[] { "-", "\\", "|", "/" };
+                char blockChar = '█';
+                int spin = 0;
+                int tick = 0;
+
+                int origLeft = Console.CursorLeft;
+                int origTop = Console.CursorTop;
+
+                while (!task.IsCompleted)
+                {
+                    Console.SetCursorPosition(centerX, Math.Max(0, centerY - 1));
+                    string msg = $"Calcul des tailles... {spinner[spin % spinner.Length]}";
+                    Console.Write(msg.PadRight(boxWidth));
+
+                    Console.SetCursorPosition(centerX, centerY);
+                    Console.Write("[");
+                    int innerWidth = boxWidth - 2;
+                    Console.Write(new string(' ', innerWidth));
+                    Console.Write("]");
+
+                    int pos = tick % innerWidth;
+                    Console.SetCursorPosition(centerX + 1 + pos, centerY);
+                    Console.Write(blockChar);
+
+                    spin++;
+                    tick = (tick + 1) % Math.Max(1, innerWidth);
+
+                    Thread.Sleep(80);
+                }
+
+                Console.SetCursorPosition(centerX, Math.Max(0, centerY - 1));
+                Console.Write(new string(' ', boxWidth));
+                Console.SetCursorPosition(centerX, centerY);
+                Console.Write(new string(' ', boxWidth));
+
+                try { Console.SetCursorPosition(origLeft, origTop); } catch { }
+            }
+            catch
+            {
+                task.Wait();
+            }
         }
 
         public static List<Entry> GetEntries(DirectoryInfo dir)
