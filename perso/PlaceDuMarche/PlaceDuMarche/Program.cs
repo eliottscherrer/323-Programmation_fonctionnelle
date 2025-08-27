@@ -20,6 +20,9 @@ namespace PlaceDuMarche
         {
             Console.WriteLine($"Il y a {CountProductSellers("Pêches")} vendeurs de pêches.");
 
+            string[] bestWatermelonSellerInfos = GetBiggestSellerInfoFromProduct("Pastèques");
+            Console.WriteLine($"C'est {bestWatermelonSellerInfos[0]} qui a le plus de pastèques (stand {bestWatermelonSellerInfos[1]}, {bestWatermelonSellerInfos[2]} pièces)");
+
             Console.ReadLine();
         }
 
@@ -48,6 +51,46 @@ namespace PlaceDuMarche
             }
 
             return count;
+        }
+
+        static string[] GetBiggestSellerInfoFromProduct(string productName)
+        {
+            int maxQuantity = 0;
+            string bestSeller = "";
+            int standId = 0;
+
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                IWorkbook workbook = new XSSFWorkbook(fileStream);
+
+                ISheet sheet = workbook.GetSheet("Produits");
+
+                for (int rowIndex = 0; rowIndex <= sheet.LastRowNum; rowIndex++)
+                {
+                    IRow row = sheet.GetRow(rowIndex);
+                    if (row != null)
+                    {
+                        ICell name = row.GetCell(2);
+                        ICell quantity = row.GetCell(3);
+                        if (name != null && name.ToString() == productName)
+                        {
+                            if (quantity != null && (int)quantity.NumericCellValue > maxQuantity)
+                            {
+                                bestSeller = row.GetCell(1).StringCellValue;
+                                standId = (int)row.GetCell(0).NumericCellValue;
+                                maxQuantity = (int)quantity.NumericCellValue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return new string[]
+            {
+                bestSeller,
+                standId.ToString(),
+                maxQuantity.ToString(),
+            };
         }
 
         static void PrintSheet(string sheetName)
